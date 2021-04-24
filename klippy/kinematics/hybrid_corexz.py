@@ -5,8 +5,8 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging, copy
-import stepper, homing
-from extras import idex_modes
+import stepper
+from extras import idex_modes, homing
 
 class HybridCoreXZKinematics:
     def __init__(self, toolhead, config):
@@ -21,6 +21,9 @@ class HybridCoreXZKinematics:
         self.rails[0].setup_itersolve('corexz_stepper_alloc', '-')
         self.rails[1].setup_itersolve('cartesian_stepper_alloc', 'y')
         self.rails[2].setup_itersolve('cartesian_stepper_alloc', 'z')
+        ranges = [r.get_range() for r in self.rails]
+        self.axes_min = toolhead.Coord(*[r[0] for r in ranges], e=0.)
+        self.axes_max = toolhead.Coord(*[r[1] for r in ranges], e=0.)
         if config.has_section('dual_carriage'):
             self.printer.add_object("dual_carriage", self)
             dc_config = config.getsection('dual_carriage')
@@ -54,9 +57,6 @@ class HybridCoreXZKinematics:
         self.max_z_accel = config.getfloat(
             'max_z_accel', max_accel, above=0., maxval=max_accel)
         self.limits = [(1.0, -1.0)] * 3
-        ranges = [r.get_range() for r in self.rails]
-        self.axes_min = toolhead.Coord(*[r[0] for r in ranges], e=0.)
-        self.axes_max = toolhead.Coord(*[r[1] for r in ranges], e=0.)
         # Setup stepper max halt velocity
         max_halt_velocity = toolhead.get_max_axis_halt()
         self.rails[0].set_max_jerk(max_halt_velocity, max_accel)
@@ -139,7 +139,7 @@ class HybridCoreXZKinematics:
             'homed_axes': "".join(axes),
             'axis_minimum': self.axes_min,
             'axis_maximum': self.axes_max,
-            'dual_carriage_status': self.dc_module.get_status()[mode]
+            'dual_carriage_status': self.dc_module.get_status()['mode']
         }
 
 def load_kinematics(toolhead, config):
