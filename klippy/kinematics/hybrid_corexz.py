@@ -54,9 +54,9 @@ class HybridCoreXZKinematics:
         self.max_z_accel = config.getfloat(
             'max_z_accel', max_accel, above=0., maxval=max_accel)
         self.limits = [(1.0, -1.0)] * 3
-        # ranges = [r.get_range() for r in self.rails]
-        # self.axes_min = toolhead.Coord(*[r[0] for r in ranges], e=0.)
-        # self.axes_max = toolhead.Coord(*[r[1] for r in ranges], e=0.)
+        ranges = [r.get_range() for r in self.rails]
+        self.axes_min = toolhead.Coord(*[r[0] for r in ranges], e=0.)
+        self.axes_max = toolhead.Coord(*[r[1] for r in ranges], e=0.)
         # Setup stepper max halt velocity
         max_halt_velocity = toolhead.get_max_axis_halt()
         self.rails[0].set_max_jerk(max_halt_velocity, max_accel)
@@ -137,8 +137,8 @@ class HybridCoreXZKinematics:
         axes = [a for a, (l, h) in zip("xyz", self.limits) if l <= h]
         return {
             'homed_axes': "".join(axes),
-            # 'axis_minimum': self.axes_min,
-            # 'axis_maximum': self.axes_max,
+            'axis_minimum': self.axes_min,
+            'axis_maximum': self.axes_max,
             'dual_carriage_status': self.dc_module.get_status()[mode]
         }
 
