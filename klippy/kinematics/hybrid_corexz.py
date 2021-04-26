@@ -69,7 +69,11 @@ class HybridCoreXZKinematics:
         return [s for rail in self.rails for s in rail.get_steppers()]
     def calc_tag_position(self):
         pos = [rail.get_tag_position() for rail in self.rails]
-        return [pos[0] - pos[2], pos[1], pos[2]]
+        if (hasattr(self, 'dc_module') and ['FULL_CONTROL','CARRIAGE_1'] == \
+                    self.dc_module.get_status()['mode']):
+            return [pos[0] - pos[2], pos[1], pos[2]]
+        else:
+            return [pos[0] + pos[2], pos[1], pos[2]]
     def update_limits(self, i, range):
         self.limits[i] = range
     def override_rail(self, i, rail):
