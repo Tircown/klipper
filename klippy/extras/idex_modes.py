@@ -193,21 +193,23 @@ class DualCarriagesRail:
         toolhead = self.printer.lookup_object('toolhead')
         self.axis_position = position[self.axis]
         self.rail.set_trapq(None)
-        self.rail.set_position(position)
         if reverse is True:
             self.status = self.REVERSED
             if self.stepper_alloc_reverse is not None:
-                self.rail.setup_itersolve( *self.stepper_alloc_reverse )
+                self.rail.setup_itersolve(*self.stepper_alloc_reverse)
+                self.rail.set_position(position)
                 self.rail.set_trapq(toolhead.get_trapq())
         elif active is True:
             self.status = self.ACTIVE
             if self.stepper_alloc_active is not None:
-                self.rail.setup_itersolve( *self.stepper_alloc_active )
+                self.rail.setup_itersolve(*self.stepper_alloc_active)
+                self.rail.set_position(position)
                 self.rail.set_trapq(toolhead.get_trapq())
         else:
             self.status = self.INACTIVE
             if self.stepper_alloc_inactive is not None:
-                self.rail.setup_itersolve( *self.stepper_alloc_inactive )
+                self.rail.setup_itersolve(*self.stepper_alloc_inactive)
+                self.rail.set_position(position)
                 self.rail.set_trapq(toolhead.get_trapq())
     def is_active(self):
         return self.status in [self.ACTIVE, self.REVERSED]
