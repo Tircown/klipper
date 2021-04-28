@@ -19,6 +19,7 @@ class PrinterExtruder:
             self.heater = pheaters.lookup_heater(shared_heater)
         self.stepper = stepper.PrinterStepper(config)
         self.nozzle_diameter = config.getfloat('nozzle_diameter', above=0.)
+        self.sync_extruders = {}
         filament_diameter = config.getfloat(
             'filament_diameter', minval=self.nozzle_diameter)
         self.filament_area = math.pi * (filament_diameter * .5)**2
@@ -98,6 +99,12 @@ class PrinterExtruder:
         return self.name
     def get_heater(self):
         return self.heater
+    def get_stepper(self):
+        return self.stepper
+    def sync_heater(self, extruder, offset=0.):
+        self.sync_extruders[extruder] = offset
+    def unsync_heater(self, extruder):
+        self.sync_extruders.pop(extruder, None)
     def sync_stepper(self, stepper):
         toolhead = self.printer.lookup_object('toolhead')
         toolhead.flush_step_generation()
@@ -173,6 +180,9 @@ class PrinterExtruder:
             extruder = self.printer.lookup_object('toolhead').get_extruder()
         pheaters = self.printer.lookup_object('heaters')
         pheaters.set_temperature(extruder.get_heater(), temp, wait)
+        for _extruder, offset in self.sync_extruders.iteritems():
+            newtemp = 0. if temp <= 0. else max(temp + offset, 0.)
+            pheaters.set_temperature(_extruder.get_heater(), newtemp, wait)
     def cmd_M109(self, gcmd):
         # Set Extruder Temperature and Wait
         self.cmd_M104(gcmd, wait=True)

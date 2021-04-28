@@ -10,6 +10,7 @@ class DualCarriages:
         self.printer = printer
         self.axis = axis
         self.dc = (rail_0, rail_1)
+        self.printer.add_object("idex_modes", self)
         gcode = self.printer.lookup_object('gcode')
         gcode.register_command(
                    'SET_DUAL_CARRIAGE', self.cmd_SET_DUAL_CARRIAGE,
@@ -17,6 +18,12 @@ class DualCarriages:
         gcode.register_command(
                    'SET_DUAL_CARRIAGE_MODE', self.cmd_SET_DUAL_CARRIAGE_MODE,
                    desc=self.cmd_SET_DUAL_CARRIAGE_MODE_help)
+        gcode.register_command(
+                   'PAIR_EXTRUDERS', self.cmd_PAIR_EXTRUDERS,
+                   desc=self.cmd_PAIR_EXTRUDERS_help)
+        gcode.register_command(
+                   'UNPAIR_EXTRUDERS', self.cmd_UNPAIR_EXTRUDERS,
+                   desc=self.cmd_UNPAIR_EXTRUDERS_help)
     def toggle_active_dc_rail(self, index):
         toolhead = self.printer.lookup_object('toolhead')
         toolhead.flush_step_generation()
@@ -144,7 +151,7 @@ class DualCarriages:
                 dci_pos = saved_status['axis_positions'][i]
                 toolhead.manual_move(
                     pos[:self.axis] + [dci_pos] + pos[self.axis+1:],
-                    self.dc[i].rail.homing_speed)                
+                    self.dc[i].rail.homing_speed)
             self.activate_dc_mode(saved_status['mode'][0])
         # set carriage 0 active
         elif (saved_status['mode'][1] == 'CARRIAGE_0' 
@@ -167,13 +174,44 @@ class DualCarriages:
                 if callable(force_home_axis):
                     kin.force_home_axis(self.axis, self.dc[index].rail)
                 else:
-                    mess = 'Function \'force_home_axis\' is not defined \
+                    errormes = 'Function \'force_home_axis\' is not defined \
                                 in kinematic'
-                    self.printer.lookup_object('gcode').respond_info(mess)
+                    self.printer.lookup_object('gcode').respond_info(errormes)
     cmd_SET_DUAL_CARRIAGE_MODE_help = "Set which mode is active"
     def cmd_SET_DUAL_CARRIAGE_MODE(self, gcmd):
         mode = gcmd.get('MODE')
         self.activate_dc_mode(mode)
+    cmd_PAIR_EXTRUDERS_help = "Synchronise extruder kinematic and heater"
+    def cmd_PAIR_EXTRUDERS(self, gcmd):
+        name_primary = gcmd.get('PRIMARY', 'extruder')
+        name_replica = gcmd.get_int('REPLICA', 'extruder1')
+        offset_temp = gcmd.get_int('OFFSET_TEMP', 0.)
+        extruder_primary = self.printer.lookup_object(name_primary, None)
+        extruder_replica = self.printer.lookup_object(name_replica, None)
+        if extruder_primary is None:
+            raise gcmd.error("'%s' is not a valid extruder." % (name_primary,))
+        elif extruder_replica is None:
+            raise gcmd.error("'%s' is not a valid extruder." % (name_replica,))
+        else:
+            extruder_primary.sync_heater(extruder_replica, offset_temp)
+            extruder_primary.sync_stepper(extruder_replica.get_stepper())
+            gcmd.respond_info("'%s' now paired with '%s'" 
+                        % (name_replica, name_primary,))
+    cmd_UNPAIR_EXTRUDERS_help = "Unsynchronise extruder kinematic and heater"
+    def cmd_UNPAIR_EXTRUDERS(self, gcmd):
+        name_primary = gcmd.get('PRIMARY', 'extruder')
+        name_replica = gcmd.get_int('REPLICA', 'extruder1')
+        extruder_primary = self.printer.lookup_object(name_primary, None)
+        extruder_replica = self.printer.lookup_object(name_replica, None)
+        if extruder_primary is None:
+            raise gcmd.error("'%s' is not a valid extruder." % (name_primary,))
+        elif extruder_replica is None:
+            raise gcmd.error("'%s' is not a valid extruder." % (name_replica,))
+        else:
+            extruder_primary.unsync_heater(extruder_replica)
+            extruder_replica.sync_stepper(extruder_replica.get_stepper())
+            gcmd.respond_info("'%s' now unpaired with '%s'" 
+                        % (name_replica, name_primary,))
 
 class DualCarriagesRail:
     ACTIVE=1
